@@ -1,0 +1,34 @@
+# RouteRAG Project Requirements
+
+## Backend (Python)
+- fastapi
+- uvicorn
+- asyncpg
+- sqlalchemy
+- pydantic
+- python-dotenv
+- pgvector
+- psycopg2-binary
+- langchain-google-genai
+- google-generativeai
+- langchain
+- langgraph
+- pandas
+- duckdb
+- alembic
+- python-multipart
+- scikit-learn
+- scipy
+
+## Frontend (Node.js)
+- next
+- react
+- react-dom
+
+## System
+- Python 3.9+ (Python 3.11 recommended)
+- Node.js 18+
+- PostgreSQL 13+ (with pgvector)
+
+## Setup
+- See docs/setup.md for instructions

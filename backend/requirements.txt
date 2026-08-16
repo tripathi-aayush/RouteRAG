@@ -1,0 +1,19 @@
+# FastAPI requirements for RouteRAG backend
+fastapi
+uvicorn
+asyncpg
+sqlalchemy
+pydantic
+python-dotenv
+pgvector
+psycopg2-binary
+langchain-google-genai
+google-generativeai
+langchain
+langgraph
+pandas
+duckdb
+alembic
+python-multipart
+scikit-learn
+scipy
