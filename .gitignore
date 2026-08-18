@@ -35,3 +35,8 @@ Thumbs.db
 .idea/
 .vscode/
 *.iml
+
+# Local analysis & interview prep
+DEEP_DIVE_ANALYSIS.md
+prompt.md
+
