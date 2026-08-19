@@ -83,7 +83,7 @@ RouteRAG addresses these challenges by delivering an **automated, conversational
 |-----------|--------|
 | **Project Name** | RouteRAG |
 | **Type** | AI-Powered Business Intelligence Assistant |
-| **Primary Technologies** | LangChain, RAG, LLMs (OpenAI GPT-4), FastAPI, Next.js |
+| **Primary Technologies** | LangChain, RAG, LLMs (Google Gemini 3.5 Flash Lite), FastAPI, Next.js |
 | **Target Users** | Business analysts, SME owners, operations teams |
 | **Data Domain** | Sales, product, regional, and customer analytics |
 
@@ -130,9 +130,9 @@ Steps 7+: Model evaluation (QAEvalChain) → Data visualization → Next.js UI c
     │                 │  │                 │  │                 │
     │ LangChain       │  │ DuckDB (SQL)    │  │ PostgreSQL      │
     │ LangGraph       │  │ Pandas          │  │ + pgvector      │
-    │ OpenAI GPT-4    │  │ scikit-learn    │  │                 │
-    │ GPT-3.5-turbo   │  │ SciPy           │  │ Sessions,Chunks │
-    │ text-ada-002    │  │ BusinessAnalyzer│  │ Metrics, Sales  │
+    │ Gemini 3.5 Lite │  │ scikit-learn    │  │                 │
+    │ text-embed-004  │  │ SciPy           │  │ Sessions,Chunks │
+    │                 │  │ BusinessAnalyzer│  │ Metrics, Sales  │
     └─────────────────┘  └─────────────────┘  └─────────────────┘
 ```
 
@@ -161,7 +161,7 @@ BusinessAnalytics/
 │   │   ├── qa_eval.py             ← QAEvalChain (4-dimension scoring)
 │   │   └── model_monitor.py       ← Feedback collection & monitoring
 │   ├── utils/
-│   │   ├── embeddings.py          ← OpenAI embedding helpers
+│   │   ├── embeddings.py          ← Gemini embedding helpers
 │   │   ├── data_processor.py      ← CSV processing & normalization
 │   │   └── rag_prompts.py         ← RAG prompt utilities
 │   └── routes/
@@ -189,13 +189,13 @@ POST /api/query
     │        ├── analytics keywords?  → natural_to_sql() → DuckDB execute
     │        └── default              → RAG Pipeline
     │                                        │
-    │                                   get_embedding() [OpenAI]
+    │                                   get_embedding() [Gemini]
     │                                        │
     │                                   pgvector similarity search
     │                                        │
     │                                   cosine_similarity re-ranking
     │                                        │
-    │                                   Top-3 chunks → LLM (GPT-3.5)
+    │                                   Top-3 chunks → LLM (Gemini 3.5 Flash Lite)
     │                                        │
     │                                   Session memory update
     ▼
@@ -213,9 +213,9 @@ Structured JSON Response → Frontend
 | Web Framework | FastAPI | Latest | Async REST API with Pydantic validation |
 | LLM Orchestration | LangChain | Latest | Chains, retrievers, prompt templates |
 | LLM Workflow | LangGraph | Latest | 4-node stateful analysis graph |
-| LLM — Deep Analysis | OpenAI GPT-4 | Latest | Complex analysis (temperature=0.2) |
-| LLM — Fast Responses | OpenAI GPT-3.5-turbo | Latest | RAG synthesis + evaluation |
-| Embeddings | text-embedding-ada-002 | Latest | Query & document vectorization (1536-dim) |
+| LLM — Deep Analysis | Google Gemini 3.5 Flash Lite | Latest | Complex analysis (temperature=0.2) |
+| LLM — Fast Responses | Google Gemini 3.5 Flash Lite | Latest | RAG synthesis + evaluation |
+| Embeddings | models/text-embedding-004 | Latest | Query & document vectorization (768-dim) |
 | Vector Search | pgvector (PostgreSQL ext.) | Latest | Semantic similarity search |
 | Analytics DB | DuckDB | Latest | In-memory OLAP SQL queries |
 | Data Processing | Pandas | Latest | DataFrame operations & aggregations |
@@ -353,8 +353,8 @@ The central pipeline controller — transforms raw CSV data into searchable know
 | `generate_response()` | Assembles context + session history into an LLM prompt and returns the answer |
 | `extract_insights()` | Parses structured insight fields from the raw LLM response text |
 
-**Embedding model:** `text-embedding-ada-002` (1,536-dim vectors)
-**Token tracking:** `get_openai_callback()` context manager logs usage per call.
+**Embedding model:** `models/text-embedding-004` (768-dim vectors)
+**Token tracking:** Gemini usage metadata logs usage per call.
 
 ### 6.2 Custom Business Retriever (`backend/llm/business_retriever.py`)
 
@@ -380,14 +380,14 @@ class BusinessRetriever(BaseRetriever):
         # Purchase behavior patterns
 
     def get_relevant_documents(self, query: str) -> List[Document]:
-        # 1. Embed query with OpenAI
+        # 1. Embed query with Gemini
         # 2. Cosine similarity vs. all stored chunk embeddings
         # 3. Return top-2 most relevant metric documents
 ```
 
 ### 6.3 LangGraph Analysis Workflow (`backend/llm/analysis_graph.py`)
 
-A stateful 4-node directed graph that routes each query to a specialized analysis handler before passing to GPT-4 for synthesis:
+A stateful 4-node directed graph that routes each query to a specialized analysis handler before passing to Gemini 3.5 Flash Lite for synthesis:
 
 ```
               ┌──────────────────┐
@@ -402,7 +402,7 @@ A stateful 4-node directed graph that routes each query to a specialized analysi
        └───────────────┴──────────────┴──────────────┘
                               │
                      ┌────────▼────────┐
-                     │  GPT-4 Synthesis │
+                     │ Gemini 3.5 Synth │
                      │  (temp = 0.2)   │
                      └─────────────────┘
 ```
@@ -445,14 +445,14 @@ RAGManager.process_business_data()
     └── Product Summary     (per-product performance metrics)
     │
     ▼
-Text serialization → OpenAI text-embedding-ada-002
+Text serialization → Gemini text-embedding-004
     │
     ▼
-1536-dim vectors → INSERT INTO document_chunks (pgvector)
+768-dim vectors → INSERT INTO document_chunks (pgvector)
 
 ━━━━ PHASE 2: RETRIEVAL (at query time) ━━━━━━━━━━━━━━━━━━━━━━━━━
 
-User Query → Embed with text-embedding-ada-002
+User Query → Embed with text-embedding-004
     │
     ▼
 pgvector approximate search → cosine_similarity() re-ranking
@@ -468,7 +468,7 @@ Context chunks + session history + user query
 BusinessPromptManager assembles prompt
     │
     ▼
-GPT-3.5-turbo → structured response with insights
+Gemini 3.5 Flash Lite → structured response with insights
 ```
 
 ### 7.2 Semantic Chunk Strategy
@@ -609,10 +609,10 @@ Three design principles make this effective:
 
 | Task | Model | Rationale |
 |------|-------|-----------|
-| Deep analysis (LangGraph nodes) | GPT-4, temp=0.2 | Highest accuracy; deterministic outputs |
-| RAG synthesis | GPT-3.5-turbo | Speed + cost balance for frequent queries |
-| Evaluation scoring | GPT-3.5-turbo | Reliable structured output parsing |
-| All embeddings | text-embedding-ada-002 | Standard, high-quality 1536-dim vectors |
+| Deep analysis (LangGraph nodes) | Gemini 3.5 Flash Lite, temp=0.2 | Highest accuracy; deterministic outputs |
+| RAG synthesis | Gemini 3.5 Flash Lite | Speed + cost balance for frequent queries |
+| Evaluation scoring | Gemini 3.5 Flash Lite | Reliable structured output parsing |
+| All embeddings | models/text-embedding-004 | High-quality 768-dim vectors |
 
 ---
 
@@ -737,7 +737,7 @@ Each AI response can be scored against a ground truth across four business-relev
 class BusinessInsightEvaluator:
     async def evaluate_response(self, question, answer, ground_truth) -> EvaluationResult:
         # 1. Build rubric prompt with all three inputs
-        # 2. Call GPT-3.5-turbo
+        # 2. Call Gemini 3.5 Flash Lite
         # 3. Parse 4 scores via regex
         # 4. Generate improvement recommendations
         # 5. Append to metrics_history
@@ -760,7 +760,7 @@ POST /api/evaluate  { question, answer, ground_truth }
     ▼
 BusinessInsightEvaluator.evaluate_response()
     ├── Assemble rubric prompt
-    ├── Call GPT-3.5-turbo
+    ├── Call Gemini 3.5 Flash Lite
     ├── Parse scores: r"(accuracy|completeness|relevance|business_value):\s*(\d+)"
     ├── Identify improvement areas (threshold-based)
     └── Append to metrics_history
@@ -780,7 +780,7 @@ BusinessInsightEvaluator.evaluate_response()
 | User ratings (1–5 stars) | `feedback` table |
 | Per-session feedback text | `feedback` table |
 | QAEvalChain score history | `metrics_history` in-memory list |
-| Token usage | OpenAI callback per request |
+| Token usage | Gemini usage metadata per request |
 
 Aggregation: `get_quality_summary()` returns averages across all evaluations; `get_performance_metrics()` returns a pandas DataFrame of score history.
 
@@ -880,14 +880,13 @@ Dark theme with blue/violet/emerald accents — intentionally resembles professi
 | Variable | Purpose | Example |
 |----------|---------|---------|
 | `DATABASE_URL` | PostgreSQL connection | `postgresql+psycopg2://user:pass@localhost:5432/routerag` |
-| `OPENAI_API_KEY` | OpenAI authentication | `sk-...` |
-| `OPENAI_BASE_URL` | API endpoint (proxy-friendly) | `https://openai.vocareum.com/v1` |
+| `GOOGLE_API_KEY` | Google Gemini API key | `AIzaSy...` |
 
 ### 15.2 Python Dependencies
 
 ```
 fastapi  uvicorn  sqlalchemy  alembic  psycopg2-binary  pgvector
-langchain  langchain-openai  langgraph  openai
+langchain  langchain-google-genai  google-generativeai  langgraph
 pandas  numpy  scipy  scikit-learn  duckdb
 python-multipart  pydantic
 ```
@@ -905,7 +904,7 @@ cd backend && alembic upgrade head
 
 # 3. Environment variables
 cp backend/.env.example backend/.env
-# Set DATABASE_URL and OPENAI_API_KEY
+# Set DATABASE_URL and GOOGLE_API_KEY
 
 # 4. Frontend dependencies
 cd ../frontend && npm install
@@ -925,14 +924,14 @@ cd ../frontend && npm install
 
 | Operation | Typical Latency | Notes |
 |-----------|----------------|-------|
-| Query embedding | ~200ms | OpenAI API round-trip |
+| Query embedding | ~200ms | Gemini API round-trip |
 | pgvector similarity search | ~5ms | Index-assisted |
 | Cosine re-ranking (top-3) | <1ms | NumPy in-memory |
 | DuckDB SQL (2,501 rows) | <10ms | In-memory OLAP |
 | Pandas aggregation | <50ms | Full dataset scan |
 | K-means clustering | <100ms | Single fit, 3 clusters |
-| GPT-3.5 RAG generation | 2–5s | Varies with response length |
-| GPT-4 deep analysis | 5–15s | Higher quality, slower |
+| Gemini 3.5 RAG generation | 1–3s | Fast, low-latency inference |
+| Gemini 3.5 deep analysis | 2–5s | Multi-step reasoning workflow |
 
 Most conversational queries complete in under 5 seconds end-to-end.
 
@@ -940,7 +939,7 @@ Most conversational queries complete in under 5 seconds end-to-end.
 
 | Component | Bottleneck | Mitigation |
 |-----------|-----------|-----------|
-| OpenAI API | Rate limits, latency | Response caching, async parallel calls |
+| Gemini API | Rate limits, latency | Response caching, async parallel calls |
 | pgvector search | Grows linearly with chunk count | IVFFlat index for large corpora |
 | DuckDB | Memory-bound | Partition or stream large CSVs |
 | Session memory | Long conversations increase prompt size | Periodic summarization (already implemented) |
@@ -1002,7 +1001,7 @@ RouteRAG is a conversational Business Intelligence Assistant that combines:
 
 - **LangChain** — to orchestrate LLM workflows and retrieval chains
 - **Retrieval-Augmented Generation (RAG)** — to ground every response in real business data
-- **OpenAI GPT-4 / GPT-3.5** — for natural language understanding and generation
+- **Google Gemini 3.5 Flash Lite** — for natural language understanding and generation
 
 You upload your sales CSV, ask questions in plain English, and receive structured insights with supporting statistics and visualizations — no SQL, no code required.
 
@@ -1025,8 +1024,8 @@ FastAPI Backend
       │                ──► analytics keywords? → DuckDB SQL
       │                ──► open-ended?         → RAG + LLM
       │
-      ├── RAG Pipeline  (embed → pgvector → GPT-3.5)
-      ├── LangGraph     (4-node GPT-4 analysis workflow)
+      ├── RAG Pipeline  (embed → pgvector → Gemini 3.5 Flash Lite)
+      ├── LangGraph     (4-node Gemini 3.5 analysis workflow)
       ├── BusinessAnalyzer (Pandas + scikit-learn + SciPy)
       └── Dual-layer Memory (PostgreSQL short-term + summaries)
 ```
@@ -1112,7 +1111,7 @@ Three things make this work:
 
 Building the system is only half the work. Knowing whether it's *good* requires an evaluation framework.
 
-RouteRAG implements a QAEvalChain-style evaluator that scores responses across four dimensions (each 1–5) using GPT-3.5-turbo as the judge:
+RouteRAG implements a QAEvalChain-style evaluator that scores responses across four dimensions (each 1–5) using Gemini 3.5 Flash Lite as the judge:
 
 | Dimension | What It Measures |
 |-----------|-----------------|
@@ -1134,7 +1133,7 @@ Not every question deserves an LLM call. Routing simple aggregations to DuckDB S
 Chunks that represent complete business domains (a region's metrics, a product's performance) retrieve far more precisely than arbitrary 512-token text slices. The chunk carries *intent*.
 
 **3. Temperature matters more than model version.**
-GPT-4 at temperature=0.2 for analysis; GPT-3.5 at temperature=0.3 for generation. The low temperature is what delivers factual accuracy — the model version matters less than the temperature setting for deterministic BI output.
+Gemini 3.5 Flash Lite at temperature=0.2 for analysis; temperature=0.3 for generation. The low temperature is what delivers factual accuracy — the model version matters less than the temperature setting for deterministic BI output.
 
 **4. Memory is what separates Q&A from analysis.**
 Users naturally ask multi-turn questions. Without persistent memory, every exchange is context-free. The dual-layer architecture — short-term buffer plus long-term summaries — is what makes RouteRAG feel like a genuine analyst rather than a chatbot.
@@ -1172,7 +1171,7 @@ cd backend && alembic upgrade head
 # Frontend
 cd ../frontend && npm install
 
-# Configure (add OPENAI_API_KEY)
+# Configure (add GOOGLE_API_KEY)
 cp backend/.env.example backend/.env
 
 # Launch
@@ -1197,4 +1196,4 @@ That division of responsibility — not a single monolithic LLM call for everyth
 
 ---
 
-*Built with LangChain · RAG · OpenAI GPT-4 · FastAPI · Next.js · April 2026*
+*Built with LangChain · RAG · Google Gemini 3.5 Flash Lite · FastAPI · Next.js · April 2026*
