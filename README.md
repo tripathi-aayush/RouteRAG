@@ -967,7 +967,7 @@ Most conversational queries complete in under 5 seconds end-to-end.
 
 ---
 
-*Technical Document — RouteRAG · April 2026*
+*Technical Document — RouteRAG · August 2026*
 
 ---
 ---
@@ -1196,4 +1196,4 @@ That division of responsibility — not a single monolithic LLM call for everyth
 
 ---
 
-*Built with LangChain · RAG · Google Gemini 3.5 Flash Lite · FastAPI · Next.js · April 2026*
+*Built with LangChain · RAG · Google Gemini 3.5 Flash Lite · FastAPI · Next.js · August 2026*
